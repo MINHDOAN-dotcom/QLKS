@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lortel - Human Resources</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        .sidebar-overlay {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-visible {
+            transform: translateX(0);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .nav-active {
+            background-color: #1e293b;
+            color: #fbbf24;
+            border-right: 4px solid #fbbf24;
+        }
+
+        .staff-item.selected {
+            background-color: #eff6ff;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-screen">
+
+    <!-- Sidebar -->
+    <div id="sidebar"
+        class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white z-50 sidebar-overlay sidebar-hidden shadow-2xl">
+        <div class="p-6 flex flex-col h-full">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-xl font-bold tracking-tighter">LORTEL</h2>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <nav class="space-y-4 flex-1">
+                <a href="RECEPTIONIST.HTML" class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition">Lễ tân</a>
+                <a href="HRMANAGER.HTML" class="flex items-center p-3 bg-blue-600 rounded-lg font-bold">Nhân sự</a>
+                <a href="#" class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition">Chi nhánh</a>
+                <a href="#" class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition">Tài vụ</a>
+            </nav>
+            <div class="text-xs text-slate-500 mt-auto">Phiên bản 0.26</div>
+        </div>
+    </div>
+
+    <div id="backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+    <!-- Header -->
+    <header class="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm shrink-0">
+        <div class="flex items-center space-x-4">
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 rounded-md transition">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <div class="border-l pl-4">
+                <span id="current-datetime" class="text-xs font-mono text-gray-500 uppercase tracking-widest">--/--/----
+                    - 00:00:00</span>
+                <h1 class="text-sm font-black text-slate-900 uppercase">Hệ thống nhân sự</h1>
+            </div>
+        </div>
+        <div class="flex items-center space-x-6">
+            <select
+                class="bg-gray-50 border border-gray-200 text-[10px] font-bold uppercase rounded p-1 focus:ring-1 focus:ring-blue-500">
+                <option>Riverside Branch</option>
+                <option>City Center Branch</option>
+            </select>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-bold text-slate-700">Admin</span>
+                <div
+                    class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold">
+                    HR</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Body -->
+    <main class="flex-1 flex overflow-hidden">
+
+        <!-- Left Nav -->
+        <aside class="w-64 bg-slate-800 flex flex-col shrink-0">
+            <div class="p-4">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Tác vụ nhân sự</h3>
+                <nav class="space-y-1">
+                    <button onclick="switchTab('overview', this)"
+                        class="w-full flex items-center p-3 text-sm text-slate-300 hover:bg-slate-700 rounded transition nav-active text-left">TỔNG
+                        QUAN</button>
+                    <button onclick="switchTab('staff-detail', this)"
+                        class="w-full flex items-center p-3 text-sm text-slate-300 hover:bg-slate-700 rounded transition text-left">XEM
+                        THÔNG TIN CHI TIẾT</button>
+                    <button onclick="switchTab('attendance', this)"
+                        class="w-full flex items-center p-3 text-sm text-slate-300 hover:bg-slate-700 rounded transition text-left">KIỂM
+                        TRA CHẤM CÔNG</button>
+                    <button onclick="switchTab('leave', this)"
+                        class="w-full flex items-center p-3 text-sm text-slate-300 hover:bg-slate-700 rounded transition text-left">NGHỈ
+                        PHÉP</button>
+                    <button onclick="switchTab('schedule', this)"
+                        class="w-full flex items-center p-3 text-sm text-slate-300 hover:bg-slate-700 rounded transition text-left">XEM
+                        LỊCH LÀM VIỆC</button>
+                </nav>
+            </div>
+            <div class="mt-auto p-4 bg-slate-900/50">
+                <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                    <span>Ngày công</span>
+                    <span class="text-green-400">22 / 26</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Content -->
+        <section class="flex-1 overflow-hidden p-6 relative">
+
+            <!-- Tab: Tổng quan -->
+            <div id="overview" class="tab-content active h-full space-y-6">
+                <div class="grid grid-cols-3 gap-4 shrink-0">
+                    <div class="bg-white p-4 rounded shadow-sm border">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Đang trong ca</p>
+                        <p class="text-2xl font-black text-slate-800">12</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border border-l-4 border-l-amber-400">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Chính thức / Thử việc</p>
+                        <p class="text-2xl font-black text-slate-800">45 / 05</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow-sm border border-l-4 border-l-red-400">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Báo vắng</p>
+                        <p class="text-2xl font-black text-red-600">02</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded shadow-sm border flex flex-col h-[calc(100%-120px)] overflow-hidden">
+                    <div class="p-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
+                        <h3 class="font-bold text-xs uppercase tracking-tighter">Log gần đây của chi nhánh</h3>
+                    </div>
+                    <div id="recent-logs" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+                        <!-- Log content -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Chi tiết nhân viên -->
+            <div id="staff-detail" class="tab-content h-full">
+                <div class="grid grid-cols-12 gap-6 h-full overflow-hidden">
+                    <!-- Danh sách bên trái -->
+                    <div class="col-span-4 bg-white rounded border flex flex-col overflow-hidden">
+                        <div class="p-4 border-b bg-gray-50 shrink-0">
+                            <input type="text" id="staff-search" onkeyup="filterStaff()"
+                                placeholder="Tìm tên hoặc mã nhân viên..."
+                                class="w-full text-xs border rounded-md px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div id="staff-list" class="flex-1 overflow-y-auto custom-scrollbar">
+                            <!-- Staff items -->
+                        </div>
+                    </div>
+
+                    <!-- Chi tiết bên phải -->
+                    <div class="col-span-8 bg-white rounded border flex flex-col overflow-hidden">
+                        <div id="empty-state"
+                            class="flex-1 flex flex-col items-center justify-center text-gray-400 italic text-sm p-10 text-center">
+                            Chọn nhân viên để xem thông tin
+                        </div>
+                        <div id="detail-content" class="hidden h-full flex flex-col overflow-hidden">
+                            <div class="p-6 border-b bg-slate-50 flex items-start space-x-6 shrink-0">
+                                <div class="w-24 h-32 bg-slate-200 rounded border flex items-center justify-center text-slate-400 font-bold text-2xl"
+                                    id="detail-avatar">
+                                    ?
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <h2 class="text-lg font-black text-slate-800 uppercase" id="detail-name">---
+                                            </h2>
+                                            <p class="text-[10px] font-bold text-blue-600 uppercase" id="detail-id">ID:
+                                                ---</p>
+                                        </div>
+                                        <span
+                                            class="px-2 py-0.5 bg-green-100 text-green-700 text-[9px] font-bold rounded uppercase"
+                                            id="detail-status">Online</span>
+                                    </div>
+                                    <div class="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                                        <p><span class="text-gray-400">Bộ phận:</span> <b id="detail-dept">---</b></p>
+                                        <p><span class="text-gray-400">Vị trí:</span> <b id="detail-role">---</b></p>
+                                        <p><span class="text-gray-400">Ngày vào:</span> <b id="detail-join">---</b></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-2" id="detail-history">
+                                <!-- History list -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Chấm công -->
+            <div id="attendance" class="tab-content h-full">
+                <div class="bg-white rounded border h-full flex flex-col overflow-hidden">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 class="font-bold text-xs uppercase">Kiểm tra chấm công</h3>
+                        <span class="text-[10px] font-mono font-bold bg-slate-200 px-2 py-1 rounded">20/05/2026</span>
+                    </div>
+                    <div class="flex-1 overflow-x-auto">
+                        <table class="w-full text-[11px] text-left">
+                            <thead class="bg-slate-100 text-slate-600 sticky top-0 uppercase font-black">
+                                <tr>
+                                    <th class="p-3 border-b">STT</th>
+                                    <th class="p-3 border-b">Nhân viên</th>
+                                    <th class="p-3 border-b">Ca</th>
+                                    <th class="p-3 border-b">Vào</th>
+                                    <th class="p-3 border-b">Tan</th>
+                                    <th class="p-3 border-b text-center">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <tr>
+                                    <td class="p-3">01</td>
+                                    <td class="p-3 font-bold">Nguyễn Văn A</td>
+                                    <td class="p-3">SÁNG (08-16)</td>
+                                    <td class="p-3 font-mono">07:55</td>
+                                    <td class="p-3 font-mono">--:--</td>
+                                    <td class="p-3 text-center"><span
+                                            class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">ĐÚNG
+                                            GIỜ</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3">02</td>
+                                    <td class="p-3 font-bold">Trần Thị B</td>
+                                    <td class="p-3">CHIỀU (14-22)</td>
+                                    <td class="p-3 font-mono">--:--</td>
+                                    <td class="p-3 font-mono">--:--</td>
+                                    <td class="p-3 text-center"><span
+                                            class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">CHƯA
+                                            ĐẾN</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Nghỉ phép -->
+            <div id="leave" class="tab-content h-full">
+                <div class="bg-white rounded border h-full flex flex-col">
+                    <div class="p-4 border-b bg-gray-50">
+                        <h3 class="font-bold text-xs uppercase">Danh sách xin nghỉ phép</h3>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <table class="w-full text-[11px] text-left">
+                            <thead class="bg-slate-100 uppercase">
+                                <tr>
+                                    <th class="p-3 border-b">STT</th>
+                                    <th class="p-3 border-b">Nhân viên</th>
+                                    <th class="p-3 border-b">Ngày xin nghỉ</th>
+                                    <th class="p-3 border-b">Số ngày</th>
+                                    <th class="p-3 border-b">Lý do</th>
+                                    <th class="p-3 border-b">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="p-3">01</td>
+                                    <td class="p-3 font-bold text-blue-600">Lê Văn C</td>
+                                    <td class="p-3">22/05/2026</td>
+                                    <td class="p-3">01</td>
+                                    <td class="p-3 truncate max-w-[150px]">Khám bệnh định kỳ tại bệnh viện ĐK</td>
+                                    <td class="p-3 space-x-2">
+                                        <button
+                                            class="bg-green-600 text-white px-2 py-1 rounded font-bold uppercase text-[9px]">Duyệt</button>
+                                        <button
+                                            class="bg-red-600 text-white px-2 py-1 rounded font-bold uppercase text-[9px]">Từ
+                                            chối</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Lịch làm việc -->
+            <div id="schedule" class="tab-content h-full">
+                <div class="bg-white rounded border h-full flex flex-col">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 class="font-bold text-xs uppercase">Lịch làm việc tuần 21</h3>
+                        <select class="text-[10px] border rounded p-1 font-bold">
+                            <option>CA SÁNG</option>
+                            <option>CA CHIỀU</option>
+                            <option>CA TỐI</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 grid grid-cols-8 border-t bg-slate-50">
+                        <div class="border-r bg-slate-100 flex flex-col">
+                            <div class="h-10 border-b"></div>
+                            <div class="flex-1 divide-y font-mono text-[9px] text-gray-500">
+                                <div class="h-8 flex items-center px-2">0000</div>
+                                <div class="h-8 flex items-center px-2">0200</div>
+                                <div class="h-8 flex items-center px-2">0400</div>
+                                <div class="h-8 flex items-center px-2">0600</div>
+                                <div class="h-8 flex items-center px-2 font-bold text-blue-600 bg-blue-50">0800</div>
+                                <div class="h-8 flex items-center px-2">1000</div>
+                                <div class="h-8 flex items-center px-2">1200</div>
+                                <div class="h-8 flex items-center px-2">1400</div>
+                                <div class="h-8 flex items-center px-2">1600</div>
+                                <div class="h-8 flex items-center px-2 font-bold text-amber-600 bg-amber-50">1800</div>
+                                <div class="h-8 flex items-center px-2">2000</div>
+                                <div class="h-8 flex items-center px-2">2200</div>
+                            </div>
+                        </div>
+                        <!-- Days of week -->
+                        <script>
+                            const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+                            days.forEach(day => {
+                                document.write(`
+                                    <div class="border-r flex flex-col">
+                                        <div class="h-10 border-b flex items-center justify-center font-bold text-[10px] uppercase text-slate-600">${day}</div>
+                                        <div class="flex-1 relative">
+                                            <!-- Block làm việc mẫu -->
+                                            ${day === 'Thứ 2' ? '<div class="absolute top-16 left-1 right-1 h-32 bg-blue-500/20 border-l-2 border-blue-600 p-1 text-[8px] font-bold text-blue-800">CA SÁNG</div>' : ''}
+                                            ${day === 'Thứ 7' ? '<div class="absolute top-64 left-1 right-1 h-16 bg-amber-500/20 border-l-2 border-amber-600 p-1 text-[8px] font-bold text-amber-800">TĂNG CA</div>' : ''}
+                                        </div>
+                                    </div>
+                                `);
+                            });
+                        </script>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        // 1. Dữ liệu giả lập
+        const staffData = [
+            { id: "LR-001", name: "Nguyễn Văn Anh", dept: "Lễ tân", role: "Trưởng ca", join: "12/05/2023", status: "online" },
+            { id: "LR-002", name: "Trần Thị Bình", dept: "Buồng phòng", role: "Nhân viên", join: "01/02/2024", status: "offline" },
+            { id: "LR-003", name: "Lê Văn Cường", dept: "Kỹ thuật", role: "Nhân viên", join: "15/09/2023", status: "online" },
+            { id: "LR-004", name: "Phạm Minh Đức", dept: "Bảo vệ", role: "Đội phó", join: "20/11/2022", status: "online" },
+            { id: "LR-005", name: "Hoàng Thanh Hà", dept: "Kế toán", role: "Nhân viên", join: "05/01/2025", status: "online" }
+        ];
+
+        // 2. Khởi tạo khi load trang
+        window.onload = function () {
+            renderStaffList(staffData);
+            renderLogs();
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+        };
+
+        // 3. Hàm hiển thị danh sách nhân viên
+        function renderStaffList(data) {
+            const list = document.getElementById('staff-list');
+            list.innerHTML = data.map(s => `
+                <div onclick="showStaffDetail('${s.id}')" class="staff-item p-4 border-b cursor-pointer hover:bg-slate-50 transition flex items-center space-x-3" data-id="${s.id}">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-[10px] uppercase">${s.name.charAt(0)}</div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-[11px] font-bold text-slate-800 uppercase">${s.name}</h4>
+                            <span class="text-[8px] font-mono text-slate-400">${s.id}</span>
+                        </div>
+                        <p class="text-[9px] text-gray-400 uppercase">${s.dept} • ${s.role}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 4. Hàm xem chi tiết nhân viên
+        function showStaffDetail(id) {
+            const staff = staffData.find(s => s.id === id);
+            if (!staff) return;
+
+            // Update UI Selection
+            document.querySelectorAll('.staff-item').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`.staff-item[data-id="${id}"]`)?.classList.add('selected');
+
+            // Show panel
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('detail-content').classList.remove('hidden');
+
+            // Map data
+            document.getElementById('detail-name').innerText = staff.name;
+            document.getElementById('detail-id').innerText = `ID: ${staff.id}`;
+            document.getElementById('detail-dept').innerText = staff.dept;
+            document.getElementById('detail-role').innerText = staff.role;
+            document.getElementById('detail-join').innerText = staff.join;
+            document.getElementById('detail-avatar').innerText = staff.name.charAt(0);
+
+            const statusBadge = document.getElementById('detail-status');
+            statusBadge.innerText = staff.status === 'online' ? 'Đang làm việc' : 'Nghỉ ca';
+            statusBadge.className = staff.status === 'online'
+                ? 'px-2 py-0.5 bg-green-100 text-green-700 text-[9px] font-bold rounded uppercase'
+                : 'px-2 py-0.5 bg-gray-100 text-gray-500 text-[9px] font-bold rounded uppercase';
+
+            // Render history dummy
+            const history = document.getElementById('detail-history');
+            history.innerHTML = '<h4 class="text-[10px] font-bold text-gray-400 uppercase mb-2">Lịch sử chấm công</h4>';
+            for (let i = 1; i <= 5; i++) {
+                history.innerHTML += `
+                    <div class="p-3 bg-gray-50 border rounded text-[10px] flex justify-between">
+                        <span>Ngày ${i + 10}/03/2026</span>
+                        <span class="font-mono text-blue-600">IN: 08:00 | OUT: 17:00</span>
+                    </div>
+                `;
+            }
+        }
+
+        // 5. Tìm kiếm
+        function filterStaff() {
+            const query = document.getElementById('staff-search').value.toLowerCase();
+            const filtered = staffData.filter(s => s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
+            renderStaffList(filtered);
+        }
+
+        // 6. Utils
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('aside nav button').forEach(b => b.classList.remove('nav-active'));
+            btn.classList.add('nav-active');
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('sidebar-hidden');
+            document.getElementById('sidebar').classList.toggle('sidebar-visible');
+            document.getElementById('backdrop').classList.toggle('hidden');
+        }
+
+        function renderLogs() {
+            const logs = [
+                { time: "08:00", msg: "Hệ thống tự động đồng bộ dữ liệu chi nhánh" },
+                { time: "08:15", msg: "Admin đã cập nhật lịch làm việc tuần 22" }
+            ];
+            document.getElementById('recent-logs').innerHTML = logs.map(l => `
+                <div class="p-3 bg-gray-50 rounded text-[11px] border flex justify-between">
+                    <span>[${l.time}] <b>${l.msg}</b></span>
+                    <span class="text-gray-400 italic text-[9px]">Hôm nay</span>
+                </div>
+            `).join('');
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
+            document.getElementById('current-datetime').innerText = `${dateStr} - ${timeStr}`;
+        }
+    </script>
+</body>
+
+</html>

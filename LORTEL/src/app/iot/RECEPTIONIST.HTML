@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lortel - Receptionist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .sidebar-overlay {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-visible {
+            transform: translateX(0);
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+
+        /* KHẮC PHỤC LỖI CUỘN: Định nghĩa chiều cao cố định */
+        .fixed-scroll-area {
+            height: 280px !important;
+            max-height: 280px !important;
+            overflow-y: auto !important;
+            display: block;
+        }
+    </style>
+</head>
+
+<body class="overflow-x-hidden">
+
+    <!-- Sidebar Navigation (Overlay) -->
+    <div id="sidebar"
+        class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white z-50 sidebar-overlay sidebar-hidden shadow-2xl">
+        <div class="p-6 flex flex-col h-full">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-xl font-bold tracking-tighter">LORTEL</h2>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="List" />
+                    </svg>
+                    ✕
+                </button>
+            </div>
+            <nav class="space-y-4 flex-1">
+                <a href="RECEPTIONIST.HTML" class="flex items-center p-3 bg-blue-600 rounded-lg">Lễ tân</a>
+                <a href="HRMANAGER.HTML" class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition">Nhân sự</a>
+                <a href="#" class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition">Chi nhánh</a>
+                <a href="#" class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition">Tài vụ</a>
+                <div id="admin-menu" class="hidden border-t border-slate-800 pt-4">
+                    <a href="#"
+                        class="flex items-center p-3 text-amber-400 hover:bg-slate-800 rounded-lg transition font-semibold">Admin</a>
+                </div>
+            </nav>
+            <div class="text-xs text-slate-500 mt-auto">Phiên bản 0.26</div>
+        </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div id="backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+    <!-- Header -->
+    <header class="bg-white border-b sticky top-0 z-30 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center space-x-4">
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 rounded-md transition">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <div class="border-l pl-4">
+                <h1 class="text-sm font-black text-slate-900 uppercase tracking-tight">Lễ tân</h1>
+                <p id="branch-name-display" class="text-xs text-blue-600 font-bold tracking-wide">
+                    <!-- Chừa chỗ để JS đổ tên chi nhánh vào đây -->
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="relative group cursor-pointer" onclick="toggleLogout()">
+                <div class="flex items-center space-x-3 p-1 hover:bg-slate-50 rounded-full transition">
+                    <!-- PFP Tròn -->
+                    <div id="staff-pfp"
+                        class="w-8 h-8 rounded-full bg-slate-200 border shadow-sm overflow-hidden flex items-center justify-center text-xs font-bold">
+                        <!-- JS đổ ảnh hoặc tên viết tắt vào đây -->
+                    </div>
+                    <!-- Tên & Chức vụ (Hiện khi hover/scale) -->
+                    <div class="hidden md:block">
+                        <p id="staff-name" class="text-xs font-bold text-slate-700"></p>
+                        <p id="staffRole" class="hidden"></p> <!-- Dùng để lưu role phục vụ logic hover -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="p-6 max-w-7xl mx-auto space-y-8">
+
+        <!-- Section 1: QR Codes -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border flex flex-col items-center justify-center space-y-4">
+                <h3 class="font-bold text-gray-700 uppercase text-xs tracking-wider">QR Check Out</h3>
+                <div className="bg-slate-100 p-4 rounded-xl">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        alt="Check-in QR" className="w-40 h-40" />
+                </div>
+                <button onclick="castToMonitor()"
+                    class="w-full py-2 bg-slate-100 hover:bg-blue-500 hover:text-white text-gray-600 rounded-lg font-semibold transition text-sm">Cast
+                    lên màn hình</button>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border flex flex-col items-center justify-center space-y-4">
+                <h3 class="font-bold text-gray-700 uppercase text-xs tracking-wider">QR Check In</h3>
+                <div className="bg-slate-100 p-4 rounded-xl">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        alt="Check-in QR" className="w-40 h-40" />
+                </div>
+                <button onclick="castToMonitor()"
+                    class="w-full py-2 bg-slate-100 hover:bg-blue-500 hover:text-white text-gray-600 rounded-lg font-semibold transition text-sm">Cast
+                    lên màn hình</button>
+            </div>
+        </div>
+
+        <!-- Section 2: Room Status & IoT -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border">
+                <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                    <h2 class="text-lg font-bold text-gray-800">Trạng thái các phòng</h2>
+                    <div class="flex space-x-2">
+                        <select id="selectFloor" onchange="loadRooms()"
+                            class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Chọn Tầng</option>
+                            <option value="1">Tầng 1</option>
+                            <option value="2">Tầng 2</option>
+                            <option value="3">Tầng 3</option>
+                            <option value="4">Tầng 4</option>
+                            <option value="5">Tầng 5</option>
+                            <option value="6">Tầng 6</option>
+                        </select>
+                        <select id="selectRoom"
+                            class="bg-gray-50 border border-gray-300 text-sm rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled>
+                            <option value="">Chọn Phòng</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="room-grid"
+                    class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 h-[250px] overflow-y-auto custom-scrollbar p-1">
+                    <div class="col-span-full flex flex-col items-center justify-center text-gray-400 py-10">
+                        <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <p class="text-sm">Vui lòng chọn tầng để xem trạng thái</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-6 rounded-xl shadow-inner border border-dashed flex flex-col h-full">
+                <h2 class="text-sm font-bold text-slate-500 uppercase mb-4 tracking-widest">Điều khiển IOT từ xa</h2>
+                <div id="iot-controls" class="space-y-4 flex-1 opacity-50 pointer-events-none">
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg border">
+                        <span class="text-sm font-medium">Thông gió</span>
+                        <button onclick="toggleIoT(this)"
+                            class="px-4 py-1 rounded bg-green-100 text-green-700 text-xs font-bold transition">BẬT</button>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg border">
+                        <span class="text-sm font-medium">Màn hình</span>
+                        <button onclick="toggleIoT(this)"
+                            class="px-4 py-1 rounded bg-slate-200 text-slate-700 text-xs font-bold transition">TẮT</button>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg border">
+                        <span class="text-sm font-medium">Hệ thống Đèn</span>
+                        <button onclick="toggleIoT(this)"
+                            class="px-4 py-1 rounded bg-green-100 text-green-700 text-xs font-bold transition">BẬT</button>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg border">
+                        <span class="text-sm font-medium">Quạt trần</span>
+                        <button onclick="toggleIoT(this)"
+                            class="px-4 py-1 rounded bg-slate-200 text-slate-700 text-xs font-bold transition">TẮT</button>
+                    </div>
+                </div>
+                <p id="iot-notice" class="text-xs text-center text-slate-400 mt-4 italic">Vui lòng chọn 1 phòng cụ thể
+                </p>
+            </div>
+        </div>
+
+        <!-- Section 3: Requests & Tasks -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Cột Trái: Pending Requests -->
+            <section class="bg-white p-5 rounded-xl shadow-sm border overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-black uppercase text-gray-800">Yêu cầu chờ xử lý</h3>
+                    <button onclick="rollbackRequest()" id="btn-rollback"
+                        class="hidden text-[9px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold hover:bg-amber-200 transition">
+                        ROLL BACK
+                    </button>
+                </div>
+                <div id="pending-list" class="fixed-scroll-area custom-scrollbar space-y-2 pr-1">
+                    <!-- Thẻ 1 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h4 class="font-bold text-[11px] uppercase">Dọn dẹp phòng 204</h4>
+                                <span class="text-[9px] text-blue-500">LẦU 2</span>
+                            </div>
+                            <p class="text-[10px] text-gray-400">Yêu cầu dọn dẹp khẩn cấp.</p>
+                        </div>
+                    </div>
+                    <!-- Thẻ 2 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h4 class="font-bold text-[11px] uppercase">Sửa Wifi 501</h4>
+                                <span class="text-[9px] text-blue-500">LẦU 5</span>
+                            </div>
+                            <p class="text-[10px] text-gray-400">Tín hiệu wifi yếu.</p>
+                        </div>
+                    </div>
+                    <!-- Thẻ 3 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h4 class="font-bold text-[11px] uppercase">Thêm gối 302</h4>
+                                <span class="text-[9px] text-blue-500">LẦU 3</span>
+                            </div>
+                            <p class="text-[10px] text-gray-400">Cần 2 gối thêm.</p>
+                        </div>
+                    </div>
+                    <!-- Thẻ 4 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Đồ uống 105</h4>
+                            <p class="text-[10px] text-gray-400">2 Trà đào đá.</p>
+                        </div>
+                    </div>
+                    <!-- Thẻ 5 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Sửa vòi sen 404</h4>
+                            <p class="text-[10px] text-gray-400">Rò rỉ nước.</p>
+                        </div>
+                    </div>
+                    <!-- Thẻ 6 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Giặt ủi 601</h4>
+                            <p class="text-[10px] text-gray-400">Lấy đồ ca sáng.</p>
+                        </div>
+                    </div>
+                    <!-- Thẻ 7 -->
+                    <div class="flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Late Checkout 202</h4>
+                            <p class="text-[10px] text-gray-400">Gia hạn 2h.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cột Phải: Daily Tasks -->
+            <section class="bg-white p-5 rounded-xl shadow-sm border overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-black uppercase text-gray-800">Công việc hằng ngày</h3>
+                    <span class="text-[9px] font-bold text-blue-500 italic">SCHEDULE</span>
+                </div>
+                <div class="fixed-scroll-area custom-scrollbar space-y-2 pr-1">
+                    <!-- Task 1 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase text-blue-700">Kiểm tra sảnh chính</h4>
+                            <p class="text-[10px] text-gray-500">08:00 - 08:30 | <span
+                                    class="text-green-600">XONG</span></p>
+                        </div>
+                    </div>
+                    <!-- Task 2 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase text-amber-700">Bàn giao ca sáng</h4>
+                            <p class="text-[10px] text-gray-500">14:00 PM | <span class="text-amber-600">ĐỢI</span></p>
+                        </div>
+                    </div>
+                    <!-- Task 3 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase text-blue-700">Kiểm kho Mini bar</h4>
+                            <p class="text-[10px] text-gray-500">Tầng 1-3 | <span class="text-green-600">XONG</span></p>
+                        </div>
+                    </div>
+                    <!-- Task 4 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Họp nhanh bộ phận</h4>
+                            <p class="text-[10px] text-gray-500">09:00 AM</p>
+                        </div>
+                    </div>
+                    <!-- Task 5 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Kiểm tra PCCC</h4>
+                            <p class="text-[10px] text-gray-500">15:00 PM</p>
+                        </div>
+                    </div>
+                    <!-- Task 6 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Backup log dữ liệu</h4>
+                            <p class="text-[10px] text-gray-500">Auto 2h</p>
+                        </div>
+                    </div>
+                    <!-- Task 7 -->
+                    <div class="flex items-center bg-slate-50 border border-gray-100 rounded p-2 h-[80px]">
+                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-[11px] uppercase">Xử lý phản hồi</h4>
+                            <p class="text-[10px] text-gray-500">Bất kỳ</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Section 4: Procedures & Log -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-12">
+            <div class="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+                <h2 class="text-lg font-bold text-gray-800 border-b pb-2">Thủ tục nhận/trả phòng nhanh</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Loại thủ tục</label>
+                        <select id="procType" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                            <option>Nhận phòng (Check-in)</option>
+                            <option>Trả phòng (Check-out)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Chọn Tầng</label>
+                        <select onchange="updateRoomProcedure(this.value)"
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                            <option value="">-- Tầng --</option>
+                            <option value="1">Tầng 1</option>
+                            <option value="2">Tầng 2</option>
+                            <option value="3">Tầng 3</option>
+                            <option value="4">Tầng 4</option>
+                            <option value="5">Tầng 5</option>
+                            <option value="6">Tầng 6</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Chọn Phòng</label>
+                        <select id="procRoom" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                            <option value="">-- Chọn --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Mã Booking</label>
+                        <input id="procBooking" type="text" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                            placeholder="Mã số..."
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Mã Khách</label>
+                        <input id="procGuest" type="text" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                            placeholder="Mã số..."
+                            class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                    </div>
+                </div>
+                <button onclick="confirmProcedure()"
+                    class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition">XÁC
+                    NHẬN</button>
+            </div>
+            <div
+                class="bg-gray-900 text-gray-300 p-6 rounded-xl shadow-lg border border-gray-800 flex flex-col h-[400px]">
+                <h2 class="text-sm font-bold text-gray-500 uppercase mb-4 tracking-widest flex justify-between">
+                    Log lịch sử tương tác dữ liệu
+                    <span class="text-blue-500 animate-pulse">● LIVE</span>
+                </h2>
+                <div id="log-container"
+                    class="flex-1 overflow-y-auto space-y-2 text-[11px] font-mono custom-scrollbar pr-2">
+                    <p class="text-gray-500">[19:00:01] Hệ thống khởi động thành công...</p>
+                    <p class="text-green-500">[19:00:05] Đăng nhập thành công: User 'Receptionist_01'</p>
+                    <p class="text-blue-400">[19:01:23] Query: Fetch branch 'Lortel Villa Riverside' data</p>
+                    <p class="text-gray-500">[19:02:45] Check-in thành công phòng 301 cho khách ID: 9942</p>
+                    <p class="text-yellow-400">[19:03:10] Cảnh báo: Room 405 yêu cầu dọn dẹp gấp</p>
+                    <p class="text-slate-500">[19:05:00] Auto-backup dữ liệu tầng 1 hoàn tất</p>
+                    <p class="text-gray-500">[19:05:33] Log cập nhật trạng thái điện nước tầng 6...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 border-t py-6 text-center text-sm text-gray-500">
+        2026 Lortel All rights reversed.
+    </footer>
+
+    <script>
+        // Mock Data Tầng: 1-10, 2-18, 3-18, 4-16, 5-10, 6-2
+        const floorData = {
+            1: 10, 2: 18, 3: 18, 4: 16, 5: 10, 6: 2
+        };
+
+        const role = "Quản lý"; // Thay bằng "Quản lý" hoặc "Nhân viên"
+
+        window.onload = function () {
+            // Hiển thị tên và quyền
+            document.getElementById('staffRole').innerText = role;
+            if (role === "Quản lý") {
+                document.getElementById('admin-menu').classList.remove('hidden');
+            }
+
+            setupPendingInteractions();
+            startAutoRequest();
+        };
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('backdrop');
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                sidebar.classList.replace('sidebar-hidden', 'sidebar-visible');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.replace('sidebar-visible', 'sidebar-hidden');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function castToMonitor() {
+            // Throwing "success" exception as requested
+            throw "success";
+        }
+
+        function loadRooms() {
+            const floor = document.getElementById('selectFloor').value;
+            const roomGrid = document.getElementById('room-grid');
+            const selectRoom = document.getElementById('selectRoom');
+            const iotControls = document.getElementById('iot-controls');
+            const iotNotice = document.getElementById('iot-notice');
+
+            roomGrid.innerHTML = '';
+            selectRoom.innerHTML = '<option value="">Chọn Phòng</option>';
+            selectRoom.disabled = !floor;
+
+            // Tắt IOT điều khiển nếu chưa chọn phòng cụ thể
+            iotControls.classList.add('opacity-50', 'pointer-events-none');
+            iotNotice.innerText = "Vui lòng chọn 1 phòng cụ thể";
+
+            if (!floor) {
+                roomGrid.innerHTML = '<div class="col-span-full flex flex-col items-center justify-center text-gray-400 py-10"><p class="text-sm">Vui lòng chọn tầng để xem trạng thái</p></div>';
+                return;
+            }
+
+            const count = floorData[floor];
+            for (let i = 1; i <= count; i++) {
+                const roomNum = floor * 100 + i;
+
+                // Random status
+                const statuses = ['rented', 'cleaning', 'empty'];
+                const status = statuses[Math.floor(Math.random() * statuses.length)];
+
+                const roomDiv = document.createElement('div');
+                roomDiv.className = `room-item aspect-square flex flex-col items-center justify-center rounded-lg border-2 cursor-pointer transition transform hover:scale-105 ${getStatusClass(status)}`;
+                roomDiv.onclick = () => selectSpecificRoom(roomNum);
+                roomDiv.innerHTML = `
+                    <span class="text-xs font-bold">${roomNum}</span>
+                    <div class="flex space-x-[2px] mt-1">
+                        <div class="w-1 h-1 bg-green-500 rounded-full" title="Điện OK"></div>
+                        <div class="w-1 h-1 bg-green-500 rounded-full" title="Nước OK"></div>
+                        <div class="w-1 h-1 bg-blue-500 rounded-full" title="Wifi OK"></div>
+                    </div>
+                `;
+                roomGrid.appendChild(roomDiv);
+
+                const opt = document.createElement('option');
+                opt.value = roomNum;
+                opt.innerText = `Phòng ${roomNum}`;
+                selectRoom.appendChild(opt);
+            }
+        }
+
+        function selectSpecificRoom(roomNum) {
+            const iotControls = document.getElementById('iot-controls');
+            const iotNotice = document.getElementById('iot-notice');
+            document.getElementById('selectRoom').value = roomNum;
+
+            iotControls.classList.remove('opacity-50', 'pointer-events-none');
+            iotNotice.innerText = `Đang điều khiển IOT Phòng ${roomNum}`;
+
+            // Visual feedback
+            const items = document.querySelectorAll('.room-item');
+            items.forEach(el => el.classList.remove('ring-4', 'ring-blue-400'));
+            event.currentTarget.classList.add('ring-4', 'ring-blue-400');
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'rented': return 'bg-red-50 border-red-200 text-red-700';
+                case 'cleaning': return 'bg-yellow-50 border-yellow-200 text-yellow-700';
+                case 'empty': return 'bg-green-50 border-green-200 text-green-700';
+            }
+        }
+
+        function toggleIoT(btn) {
+            if (btn.innerText === "BẬT") {
+                btn.innerText = "TẮT";
+                btn.className = "px-4 py-1 rounded bg-slate-200 text-slate-700 text-xs font-bold transition";
+            } else {
+                btn.innerText = "BẬT";
+                btn.className = "px-4 py-1 rounded bg-green-100 text-green-700 text-xs font-bold transition";
+            }
+        }
+
+        function updateRoomProcedure(floor) {
+            const procRoom = document.getElementById('procRoom');
+            procRoom.innerHTML = '<option>-- Chọn --</option>';
+            if (!floor) return;
+
+            const count = floorData[floor];
+            for (let i = 1; i <= count; i++) {
+                const opt = document.createElement('option');
+                opt.value = floor * 100 + i;
+                opt.innerText = `P${floor * 100 + i}`;
+                procRoom.appendChild(opt);
+            }
+        }
+
+        function setupPendingInteractions() {
+            const pendingList = document.getElementById('pending-list');
+            if (!pendingList) return;
+
+            pendingList.addEventListener('click', function (e) {
+                const card = e.target.closest('.flex.items-center.bg-white.border');
+                if (!card) return;
+
+                const checkbox = card.querySelector('input[type="checkbox"]');
+
+                // Nếu click vào checkbox
+                if (e.target.type === 'checkbox') {
+                    if (e.target.checked) {
+                        handleCompletion(card);
+                    }
+                    return;
+                }
+
+                // Nếu click vào vùng khác của card
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    if (checkbox.checked) {
+                        handleCompletion(card);
+                    }
+                }
+            });
+        }
+
+        function handleCompletion(card) {
+            const taskName = card.querySelector('h4').innerText;
+            
+            // Lưu trạng thái để hoàn tác
+            lastDeletedRequest = {
+                html: card.outerHTML,
+                name: taskName
+            };
+            document.getElementById('btn-rollback').classList.remove('hidden');
+            
+            addLog(`Hoàn thành: ${taskName}`, 'green');
+            
+            setTimeout(() => {
+                card.remove();
+                updatePendingCount();
+            }, 200);
+        }
+
+        function rollbackRequest() {
+            if (!lastDeletedRequest) return;
+            const pendingList = document.getElementById('pending-list');
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = lastDeletedRequest.html;
+            const restoredNode = tempDiv.firstChild;
+            
+            restoredNode.querySelector('input[type="checkbox"]').checked = false;
+            pendingList.prepend(restoredNode);
+            
+            addLog(`Rollback: ${lastDeletedRequest.name}`, 'yellow');
+            lastDeletedRequest = null;
+            document.getElementById('btn-rollback').classList.add('hidden');
+            updatePendingCount();
+        }
+
+        // 2. Hàm ghi log vào Section 4
+        function addLog(message, colorClass = 'gray') {
+            const logContainer = document.getElementById('log-container');
+            const now = new Date();
+            const timeStr = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
+
+            const colors = {
+                green: 'text-green-500',
+                blue: 'text-blue-400',
+                yellow: 'text-yellow-400',
+                gray: 'text-gray-500'
+            };
+
+            const p = document.createElement('p');
+            p.className = colors[colorClass] || colors.gray;
+            p.innerText = `${timeStr} ${message}`;
+
+            logContainer.prepend(p); // Đưa log mới lên đầu
+        }
+
+        // 4. Hàm tự động tạo request mới mỗi 30 giây
+        function startAutoRequest() {
+            setInterval(() => {
+                const pendingList = document.getElementById('pending-list');
+                const currentCount = pendingList.children.length;
+
+                if (currentCount < 10) {
+                    const randomRooms = [101, 205, 302, 404, 501, 602];
+                    const randomTasks = ["Dọn dẹp", "Sửa điện", "Thay khăn", "Bổ sung nước", "Sửa Wifi"];
+
+                    const room = randomRooms[Math.floor(Math.random() * randomRooms.length)];
+                    const task = randomTasks[Math.floor(Math.random() * randomTasks.length)];
+
+                    const newRequest = document.createElement('div');
+                    newRequest.className = "flex items-center bg-white border border-gray-100 rounded p-2 h-[80px]";
+                    newRequest.innerHTML = `
+                <input type="checkbox" class="w-4 h-4 rounded border-gray-300 mr-3">
+                <div class="flex-1">
+                    <div class="flex justify-between">
+                        <h4 class="font-bold text-[11px] uppercase">${task} phòng ${room}</h4>
+                        <span class="text-[9px] text-blue-500">AUTO</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400">Yêu cầu hệ thống tự động.</p>
+                </div>
+            `;
+
+                    pendingList.appendChild(newRequest);
+                    updatePendingCount();
+                    addLog(`Hệ thống tạo yêu cầu tự động: ${task} P.${room}`, 'blue');
+                }
+            }, 30000); // 30 giây
+        }
+        function updatePendingCount() {
+            // Tìm nhãn hiển thị số lượng (thường là span màu đỏ)
+            const countLabel = document.querySelector('.text-red-500');
+            const pendingList = document.getElementById('pending-list');
+            if (countLabel && pendingList) {
+                const currentCount = pendingList.children.length;
+                countLabel.innerText = `${currentCount} MỚI`;
+            }
+        }
+
+        // HÀM XÁC NHẬN THỦ TỤC VÀ GHI LOG
+        function confirmProcedure() {
+            const type = document.getElementById('procType').value;
+            const room = document.getElementById('procRoom').value;
+            const booking = document.getElementById('procBooking').value;
+            const guest = document.getElementById('procGuest').value;
+
+            if (!room) {
+                addLog("Lỗi: Chưa chọn phòng cho thủ tục", "yellow");
+                return;
+            }
+
+            const message = `${type} | Phòng: ${room} | Booking: ${booking || 'N/A'} | Khách: ${guest || 'N/A'}`;
+            addLog(message, "green");
+
+            // Reset form nhẹ
+            document.getElementById('procBooking').value = '';
+            document.getElementById('procGuest').value = '';
+        }
+        
+    </script>
+</body>
+
+</html>

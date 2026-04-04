@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lortel - Finance & Accounting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #f3f4f6;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .mono { font-family: 'IBM Plex Mono', monospace; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+
+        .sidebar-overlay { transition: transform 0.3s ease-in-out; }
+        .sidebar-hidden { transform: translateX(-100%); }
+        .sidebar-visible { transform: translateX(0); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; flex-direction: column; height: 100%; }
+
+        .nav-active {
+            background-color: #1e293b;
+            color: #fbbf24;
+            border-right: 4px solid #fbbf24;
+        }
+
+        /* Stat card hover */
+        .stat-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+
+        /* Tag pill animations */
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .anim-in { animation: fadeSlideIn 0.25s ease both; }
+
+        /* Trend arrow */
+        .trend-up   { color: #16a34a; }
+        .trend-down { color: #dc2626; }
+
+        /* Forum card */
+        .forum-card {
+            border-left: 3px solid transparent;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .forum-card:hover { background: #f8fafc; border-left-color: #3b82f6; }
+
+        /* Reference sheet row */
+        .sheet-row { transition: background 0.12s; }
+        .sheet-row:hover { background: #f1f5f9; }
+
+        /* Number ticker feel */
+        .big-number {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col h-screen">
+
+    <!-- ══════════════════════════════════════════
+         OUTER SIDEBAR  (same as INFRAS)
+    ══════════════════════════════════════════ -->
+    <div id="sidebar"
+        class="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white z-50 sidebar-overlay sidebar-hidden shadow-2xl">
+        <div class="p-6 flex flex-col h-full">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-xl font-bold tracking-tighter">LORTEL</h2>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <nav class="space-y-4 flex-1">
+                <a href="RECEPTIONIST.HTML"
+                   class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition text-sm">Lễ tân</a>
+                <a href="HRMANAGER.HTML"
+                   class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition text-sm">Nhân sự</a>
+                <a href="INFRAS.HTML"
+                   class="flex items-center p-3 hover:bg-slate-800 rounded-lg transition text-sm">Chi nhánh</a>
+                <a href="FINANCE.HTML"
+                   class="flex items-center p-3 bg-blue-600 rounded-lg font-bold text-sm">Tài vụ</a>
+            </nav>
+            <div class="text-[10px] text-slate-500 mt-auto uppercase font-bold">Finance Module v0.1</div>
+        </div>
+    </div>
+
+    <div id="backdrop" onclick="toggleSidebar()"
+         class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+    <!-- ══════════════════════════════════════════
+         HEADER  (same pattern as INFRAS)
+    ══════════════════════════════════════════ -->
+    <header class="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm shrink-0">
+        <div class="flex items-center space-x-4">
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 rounded-md transition">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <div class="border-l pl-4">
+                <span id="current-datetime"
+                      class="text-xs font-mono text-gray-500 uppercase tracking-widest">--/--/---- - 00:00:00</span>
+                <h1 class="text-sm font-black text-slate-900 uppercase">Tài vụ &amp; Kế toán</h1>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-slate-700">Admin</span>
+            <div class="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold">
+                FIN
+            </div>
+        </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════
+         MAIN BODY
+    ══════════════════════════════════════════ -->
+    <main class="flex-1 flex overflow-hidden">
+
+        <!-- Left Nav -->
+        <aside class="w-64 bg-slate-800 flex flex-col shrink-0">
+            <div class="p-4">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Danh mục quản lý</h3>
+                <nav class="space-y-1">
+                    <button onclick="switchTab('salary', this)"
+                        class="w-full flex items-center p-3 text-[11px] font-bold text-slate-300 hover:bg-slate-700 rounded transition nav-active text-left uppercase">
+                        Thống kê lương
+                    </button>
+                    <button onclick="switchTab('taxes', this)"
+                        class="w-full flex items-center p-3 text-[11px] font-bold text-slate-300 hover:bg-slate-700 rounded transition text-left uppercase">
+                        Thuế &amp; Hóa đơn
+                    </button>
+                    <button onclick="switchTab('sheets', this)"
+                        class="w-full flex items-center p-3 text-[11px] font-bold text-slate-300 hover:bg-slate-700 rounded transition text-left uppercase">
+                        Biểu mẫu tham chiếu
+                    </button>
+                    <button onclick="switchTab('forum', this)"
+                        class="w-full flex items-center p-3 text-[11px] font-bold text-slate-300 hover:bg-slate-700 rounded transition text-left uppercase">
+                        Diễn đàn / Tin tức
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Quick Alerts -->
+            <div class="px-4 mt-2 space-y-2">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Cảnh báo nhanh</h3>
+                <div class="bg-amber-900/40 border border-amber-700/50 rounded p-2 text-[10px] text-amber-300 font-bold">
+                    ⚠ 3 hoá đơn sắp đến hạn
+                </div>
+                <div class="bg-blue-900/40 border border-blue-700/50 rounded p-2 text-[10px] text-blue-300 font-bold">
+                    ℹ Kỳ tính lương T6 mở
+                </div>
+            </div>
+
+            <div class="mt-auto p-4 bg-slate-900/50">
+                <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                    <span>Trạng thái hệ thống</span>
+                    <span class="text-green-400">Ổn định</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Content -->
+        <section class="flex-1 overflow-hidden p-6 relative flex flex-col gap-4">
+
+            <!-- Branch selector (shared across all tabs) -->
+            <div class="shrink-0">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Chi nhánh đang xem</label>
+                <select id="branch-select" onchange="onBranchChange(this.value)"
+                    class="w-72 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] font-bold uppercase rounded p-2 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer">
+                    <option value="br-001">Riverside Premium</option>
+                    <option value="br-002">City Center Luxury</option>
+                    <option value="br-003">Beachfront Resort</option>
+                </select>
+            </div>
+
+            <!-- ─────────────────────────────
+                 TAB 1 · Salary Statistics
+            ───────────────────────────── -->
+            <div id="salary" class="tab-content active overflow-hidden">
+
+                <!-- KPI Row -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0 mb-4">
+                    <div class="stat-card bg-white rounded border p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng quỹ lương T6</p>
+                        <p class="big-number text-2xl text-slate-900" id="kpi-total-salary">4.82 tỷ</p>
+                        <p class="text-[10px] trend-up mt-1 font-bold">▲ +3.2% so tháng trước</p>
+                    </div>
+                    <div class="stat-card bg-white rounded border p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Lương TB / nhân viên</p>
+                        <p class="big-number text-2xl text-slate-900" id="kpi-avg-salary">18.9M</p>
+                        <p class="text-[10px] text-slate-400 mt-1 font-bold">124 nhân sự active</p>
+                    </div>
+                    <div class="stat-card bg-white rounded border p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Thưởng KPI tháng</p>
+                        <p class="big-number text-2xl text-amber-600" id="kpi-bonus">312M</p>
+                        <p class="text-[10px] trend-up mt-1 font-bold">▲ +8.5% vs T5</p>
+                    </div>
+                    <div class="stat-card bg-white rounded border p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Trạng thái chi trả</p>
+                        <p class="big-number text-2xl text-green-600">Hoàn tất</p>
+                        <p class="text-[10px] text-slate-400 mt-1 font-bold">Ngày 25/06/2026</p>
+                    </div>
+                </div>
+
+                <!-- Chart + Department Table -->
+                <div class="flex gap-4 flex-1 overflow-hidden min-h-0">
+                    <!-- Bar chart -->
+                    <div class="bg-white rounded border p-4 flex flex-col w-80 shrink-0">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Lương 6 tháng gần nhất (triệu VND)</p>
+                        <div class="flex-1 min-h-0 relative">
+                            <canvas id="salaryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Dept breakdown table -->
+                    <div class="bg-white rounded border flex-1 flex flex-col overflow-hidden">
+                        <div class="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
+                            <h3 class="font-bold text-xs uppercase tracking-tighter">Chi tiết lương theo phòng ban</h3>
+                            <button class="bg-slate-800 text-white px-3 py-1.5 rounded text-[10px] font-bold uppercase hover:bg-slate-700">
+                                Xuất Excel
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto custom-scrollbar">
+                            <table class="w-full text-[11px] text-left">
+                                <thead class="bg-slate-100 text-slate-600 sticky top-0 uppercase font-black">
+                                    <tr>
+                                        <th class="p-3 border-b">Phòng ban</th>
+                                        <th class="p-3 border-b text-center">Nhân sự</th>
+                                        <th class="p-3 border-b text-right">Tổng lương</th>
+                                        <th class="p-3 border-b text-right">Lương TB</th>
+                                        <th class="p-3 border-b text-center">Trạng thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y" id="salary-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────
+                 TAB 2 · Taxes & Bills
+            ───────────────────────────── -->
+            <div id="taxes" class="tab-content overflow-hidden">
+
+                <!-- Summary pills -->
+                <div class="grid grid-cols-3 gap-3 shrink-0 mb-4">
+                    <div class="stat-card bg-white rounded border p-4 border-l-4 border-l-red-500">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Hóa đơn quá hạn</p>
+                        <p class="big-number text-3xl text-red-600">3</p>
+                    </div>
+                    <div class="stat-card bg-white rounded border p-4 border-l-4 border-l-amber-500">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Đến hạn trong 7 ngày</p>
+                        <p class="big-number text-3xl text-amber-600">5</p>
+                    </div>
+                    <div class="stat-card bg-white rounded border p-4 border-l-4 border-l-green-500">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thanh toán T6</p>
+                        <p class="big-number text-3xl text-green-600">12</p>
+                    </div>
+                </div>
+
+                <!-- Bills table -->
+                <div class="bg-white rounded border flex-1 flex flex-col overflow-hidden">
+                    <div class="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
+                        <h3 class="font-bold text-xs uppercase tracking-tighter">Danh sách thuế &amp; hoá đơn</h3>
+                        <div class="flex items-center gap-2">
+                            <select class="border rounded text-[10px] font-bold px-2 py-1 text-slate-600 outline-none">
+                                <option>Tất cả trạng thái</option>
+                                <option>Quá hạn</option>
+                                <option>Sắp đến hạn</option>
+                                <option>Đã thanh toán</option>
+                            </select>
+                            <button onclick="openBillModal()"
+                                class="bg-amber-500 text-white px-3 py-1.5 rounded text-[10px] font-bold uppercase hover:bg-amber-600">
+                                + Thêm hóa đơn
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar">
+                        <table class="w-full text-[11px] text-left">
+                            <thead class="bg-slate-100 text-slate-600 sticky top-0 uppercase font-black">
+                                <tr>
+                                    <th class="p-3 border-b">Mã HĐ</th>
+                                    <th class="p-3 border-b">Loại</th>
+                                    <th class="p-3 border-b">Đơn vị phát hành</th>
+                                    <th class="p-3 border-b text-right">Số tiền</th>
+                                    <th class="p-3 border-b text-center">Hạn nộp</th>
+                                    <th class="p-3 border-b text-center">Trạng thái</th>
+                                    <th class="p-3 border-b text-center">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y" id="tax-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────
+                 TAB 3 · Reference Finance Sheets
+            ───────────────────────────── -->
+            <div id="sheets" class="tab-content overflow-hidden">
+                <!-- Search bar -->
+                <div class="flex items-center gap-3 shrink-0 mb-4">
+                    <input id="sheet-search" oninput="filterSheets()" type="text" placeholder="Tìm kiếm biểu mẫu..."
+                        class="flex-1 border rounded p-2 text-sm outline-none focus:ring-1 focus:ring-blue-500 text-slate-700"/>
+                    <select class="border rounded text-[10px] font-bold px-3 py-2 text-slate-600 outline-none">
+                        <option>Tất cả loại</option>
+                        <option>Lương</option>
+                        <option>Thuế</option>
+                        <option>Bảo hiểm</option>
+                        <option>Quyết toán</option>
+                    </select>
+                </div>
+
+                <!-- Sheets grid -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div id="sheets-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                </div>
+            </div>
+
+            <!-- ─────────────────────────────
+                 TAB 4 · Forum / News
+            ───────────────────────────── -->
+            <div id="forum" class="tab-content overflow-hidden">
+                <!-- Filter chips -->
+                <div class="flex items-center gap-2 shrink-0 mb-4 flex-wrap">
+                    <span class="text-[10px] font-black text-slate-400 uppercase mr-1">Lọc:</span>
+                    <button onclick="filterForum('all', this)"
+                        class="forum-chip px-3 py-1 rounded-full text-[10px] font-bold bg-slate-800 text-white uppercase">Tất cả</button>
+                    <button onclick="filterForum('salary', this)"
+                        class="forum-chip px-3 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Luật lương</button>
+                    <button onclick="filterForum('tax', this)"
+                        class="forum-chip px-3 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Thuế</button>
+                    <button onclick="filterForum('insurance', this)"
+                        class="forum-chip px-3 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Bảo hiểm</button>
+                    <button onclick="filterForum('policy', this)"
+                        class="forum-chip px-3 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase">Chính sách</button>
+                </div>
+
+                <div class="flex gap-4 flex-1 overflow-hidden min-h-0">
+                    <!-- News feed -->
+                    <div class="flex-1 overflow-y-auto custom-scrollbar space-y-2" id="forum-feed"></div>
+
+                    <!-- Sidebar: Pinned + Stats -->
+                    <div class="w-64 shrink-0 space-y-4 overflow-y-auto custom-scrollbar">
+                        <div class="bg-white rounded border p-4">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">📌 Ghim quan trọng</p>
+                            <div class="space-y-2" id="pinned-feed"></div>
+                        </div>
+                        <div class="bg-slate-800 rounded p-4 text-white">
+                            <p class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-3">Hiệu lực sắp tới</p>
+                            <ul class="space-y-2 text-[10px] text-slate-300 font-bold">
+                                <li class="flex justify-between"><span>Lương tối thiểu mới</span><span class="text-amber-400">01/07/2026</span></li>
+                                <li class="flex justify-between"><span>Điều chỉnh BHXH</span><span class="text-amber-400">01/01/2027</span></li>
+                                <li class="flex justify-between"><span>Quyết toán thuế TNCN</span><span class="text-amber-400">31/03/2027</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section><!-- /Right Content -->
+    </main>
+
+    <!-- ══════════════════════════════════════════
+         MODAL · Add Bill
+    ══════════════════════════════════════════ -->
+    <div id="bill-modal" class="fixed inset-0 bg-black/60 z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+                <h3 class="font-black text-xs uppercase tracking-widest text-slate-800">Thêm hoá đơn / Khoản thuế mới</h3>
+                <button onclick="closeBillModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Loại</label>
+                        <select id="bill-type" class="w-full border rounded p-2 text-sm outline-none focus:ring-1 focus:ring-blue-500">
+                            <option>Thuế TNCN</option>
+                            <option>Thuế GTGT</option>
+                            <option>BHXH</option>
+                            <option>Điện / Nước</option>
+                            <option>Khác</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Đơn vị phát hành</label>
+                        <input type="text" id="bill-issuer" placeholder="VD: Cục thuế Q4"
+                            class="w-full border rounded p-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"/>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Số tiền (VND)</label>
+                        <input type="number" id="bill-amount" placeholder="0"
+                            class="w-full border rounded p-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"/>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Hạn nộp</label>
+                        <input type="date" id="bill-due"
+                            class="w-full border rounded p-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"/>
+                    </div>
+                </div>
+                <button onclick="addBill()"
+                    class="w-full bg-amber-500 text-white font-black py-3 rounded uppercase text-xs tracking-widest hover:bg-amber-600 transition">
+                    Xác nhận thêm hoá đơn
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SCRIPTS
+    ══════════════════════════════════════════ -->
+    <script>
+    // ─── DATA ─────────────────────────────────────────────────────────────────
+    const salaryDepts = [
+        { dept:"Lễ tân & Front Office", count:28, total:"432M", avg:"15.4M", status:"Hoàn tất" },
+        { dept:"Ẩm thực & F&B",          count:35, total:"578M", avg:"16.5M", status:"Hoàn tất" },
+        { dept:"Kỹ thuật & Hạ tầng",     count:18, total:"396M", avg:"22.0M", status:"Hoàn tất" },
+        { dept:"Kinh doanh & Marketing",  count:12, total:"312M", avg:"26.0M", status:"Hoàn tất" },
+        { dept:"Tài vụ & Kế toán",        count:8,  total:"248M", avg:"31.0M", status:"Hoàn tất" },
+        { dept:"Nhân sự & Hành chính",    count:10, total:"210M", avg:"21.0M", status:"Đang xử lý" },
+        { dept:"Bảo vệ & An ninh",        count:13, total:"195M", avg:"15.0M", status:"Hoàn tất" },
+    ];
+
+    const taxBills = [
+        { id:"INV-2026-061", type:"Thuế GTGT",  issuer:"Cục Thuế Q4",       amount:"185,200,000",  due:"28/06/2026", status:"Sắp đến hạn" },
+        { id:"INV-2026-062", type:"BHXH",        issuer:"BHXH TP. HCM",     amount:"423,500,000",  due:"25/06/2026", status:"Quá hạn" },
+        { id:"INV-2026-063", type:"Điện",        issuer:"EVN TP. HCM",      amount:"48,750,000",   due:"30/06/2026", status:"Sắp đến hạn" },
+        { id:"INV-2026-064", type:"Thuế TNCN",   issuer:"Cục Thuế Q4",      amount:"62,300,000",   due:"20/06/2026", status:"Quá hạn" },
+        { id:"INV-2026-065", type:"Nước",        issuer:"SAWACO",           amount:"12,400,000",   due:"05/07/2026", status:"Chờ thanh toán" },
+        { id:"INV-2026-066", type:"Thuế GTGT",   issuer:"Cục Thuế Q4",      amount:"198,000,000",  due:"28/05/2026", status:"Đã thanh toán" },
+        { id:"INV-2026-067", type:"BHYT",        issuer:"BHXH TP. HCM",     amount:"89,100,000",   due:"25/05/2026", status:"Đã thanh toán" },
+        { id:"INV-2026-068", type:"Môn bài",     issuer:"Cục Thuế Q4",      amount:"3,000,000",    due:"30/01/2026", status:"Đã thanh toán" },
+        { id:"INV-2026-069", type:"Internet",    issuer:"VNPT",             amount:"8,250,000",    due:"15/06/2026", status:"Quá hạn" },
+        { id:"INV-2026-070", type:"Bảo hiểm TS", issuer:"Bảo Việt",         amount:"156,000,000",  due:"10/07/2026", status:"Chờ thanh toán" },
+    ];
+
+    let taxBillsState = [...taxBills];
+
+    const refSheets = [
+        { title:"Biểu thuế TNCN lũy tiến 2026",      cat:"Thuế",      updated:"01/01/2026", desc:"Bảng thuế suất từng bậc thu nhập theo TT 111/2013 cập nhật." },
+        { title:"Bảng lương tối thiểu vùng 2026",     cat:"Lương",     updated:"01/01/2026", desc:"Mức lương tối thiểu vùng I–IV áp dụng từ 01/01/2026." },
+        { title:"Tỷ lệ đóng BHXH / BHYT / BHTN",     cat:"Bảo hiểm",  updated:"01/03/2026", desc:"Tỷ lệ đóng góp của NLĐ và NSDLĐ theo Luật BHXH sửa đổi." },
+        { title:"Mẫu quyết toán thuế TNCN (02/QTT)",  cat:"Thuế",      updated:"15/02/2026", desc:"Tờ khai quyết toán thuế TNCN cá nhân ủy quyền cho DN." },
+        { title:"Phụ cấp không tính thuế 2026",       cat:"Lương",     updated:"01/01/2026", desc:"Danh sách các khoản phụ cấp được miễn thuế TNCN." },
+        { title:"Mẫu phiếu lương nhân viên chuẩn",   cat:"Lương",     updated:"01/06/2026", desc:"Template phiếu lương đầy đủ khấu trừ BH và thuế." },
+        { title:"Biểu mẫu đăng ký MST người phụ thuộc", cat:"Thuế",   updated:"01/04/2026", desc:"Hướng dẫn đăng ký giảm trừ gia cảnh theo TT 105/2020." },
+        { title:"Quy định làm thêm giờ & hệ số lương", cat:"Lương",   updated:"01/01/2026", desc:"Cách tính lương OT theo BLLĐ 2019 điều 107, 108." },
+        { title:"Bảng hệ số lương nhà nước 2026",     cat:"Quyết toán",updated:"01/01/2026", desc:"Dành cho đơn vị có vốn nhà nước hoặc tham chiếu." },
+    ];
+
+    let sheetsState = [...refSheets];
+
+    const forumPosts = [
+        { id:1, tag:"salary",    pinned:true,  badge:"Mới",   date:"20/06/2026", author:"Bộ LĐTB&XH",
+          title:"Tăng lương tối thiểu vùng từ 01/07/2026 – Mức cụ thể từng vùng",
+          body:"Chính phủ ban hành NĐ 73/2026 điều chỉnh lương tối thiểu vùng tăng bình quân 6%." },
+        { id:2, tag:"tax",       pinned:true,  badge:"Cập nhật", date:"18/06/2026", author:"Tổng Cục Thuế",
+          title:"Hướng dẫn quyết toán thuế TNCN 2025 – Gia hạn đến 31/08/2026",
+          body:"Thông tư 35/2026 gia hạn thời hạn quyết toán thuế TNCN cho cá nhân và tổ chức trả thu nhập." },
+        { id:3, tag:"insurance", pinned:false, badge:"Thảo luận", date:"16/06/2026", author:"HRM Forum VN",
+          title:"BHXH điện tử: Doanh nghiệp cần làm gì trước 30/06?",
+          body:"Các bước chuẩn bị hồ sơ điện tử, kê khai và nộp BHXH qua cổng BHXH số." },
+        { id:4, tag:"policy",   pinned:false, badge:"Chính sách", date:"14/06/2026", author:"Bộ Tài chính",
+          title:"Sửa đổi biểu thuế suất thuế GTGT – Dự thảo Luật mới nhất",
+          body:"Bộ Tài chính lấy ý kiến về việc điều chỉnh thuế suất GTGT từ 10% xuống 8% cho một số ngành." },
+        { id:5, tag:"salary",   pinned:false, badge:"Hỏi đáp",   date:"12/06/2026", author:"Cộng đồng HR",
+          title:"Tính lương thử việc đúng luật – Tối thiểu 85% hay 100%?",
+          body:"Thảo luận về quy định tính lương trong thời gian thử việc theo điều 27 BLLĐ 2019." },
+        { id:6, tag:"tax",      pinned:false, badge:"Hướng dẫn", date:"10/06/2026", author:"Tổng Cục Thuế",
+          title:"Hoá đơn điện tử khởi tạo từ máy tính tiền – lộ trình bắt buộc 2026",
+          body:"Các cơ sở kinh doanh dịch vụ bắt buộc dùng HĐĐT từ máy tính tiền từ 01/07/2026." },
+        { id:7, tag:"insurance",pinned:false, badge:"Tin tức",   date:"08/06/2026", author:"BHXH VN",
+          title:"Quỹ hưu trí 2026: Mức đóng tối đa tăng lên 36 triệu/tháng",
+          body:"Điều chỉnh mức thu nhập tính đóng BHXH tối đa theo lương cơ sở mới." },
+        { id:8, tag:"policy",   pinned:false, badge:"Phân tích", date:"05/06/2026", author:"Tax Experts VN",
+          title:"So sánh chính sách thuế doanh nghiệp Việt Nam vs ASEAN 2026",
+          body:"Góc nhìn phân tích thuế suất TNDN Việt Nam (20%) so với Singapore (17%), Thái Lan (20%)." },
+    ];
+
+    let forumFilter = 'all';
+
+    // ─── CHART ────────────────────────────────────────────────────────────────
+    let salaryChartInst = null;
+
+    function initSalaryChart() {
+        const ctx = document.getElementById('salaryChart');
+        if (!ctx) return;
+        if (salaryChartInst) salaryChartInst.destroy();
+        salaryChartInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['T1','T2','T3','T4','T5','T6'],
+                datasets: [{
+                    label: 'Quỹ lương (M VND)',
+                    data: [4120, 4250, 4310, 4550, 4670, 4820],
+                    backgroundColor: '#1e293b',
+                    borderRadius: 4,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'IBM Plex Mono', size: 9 }, color:'#94a3b8' } },
+                    x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Mono', size: 9 }, color:'#94a3b8' } }
+                }
+            }
+        });
+    }
+
+    // ─── RENDER FUNCTIONS ─────────────────────────────────────────────────────
+    function renderSalaryTable() {
+        document.getElementById('salary-table-body').innerHTML = salaryDepts.map(d => `
+            <tr class="hover:bg-slate-50 transition text-[11px]">
+                <td class="p-3 font-bold text-slate-700">${d.dept}</td>
+                <td class="p-3 text-center font-mono text-slate-600">${d.count}</td>
+                <td class="p-3 text-right font-mono font-bold text-blue-600">${d.total}</td>
+                <td class="p-3 text-right font-mono text-slate-600">${d.avg}</td>
+                <td class="p-3 text-center">
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase
+                        ${d.status === 'Hoàn tất' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">
+                        ${d.status}
+                    </span>
+                </td>
+            </tr>`).join('');
+    }
+
+    function renderTaxTable() {
+        const statusCls = s => {
+            if (s === 'Quá hạn')        return 'bg-red-100 text-red-700';
+            if (s === 'Sắp đến hạn')    return 'bg-amber-100 text-amber-700';
+            if (s === 'Đã thanh toán')  return 'bg-green-100 text-green-700';
+            return 'bg-slate-100 text-slate-600';
+        };
+        document.getElementById('tax-table-body').innerHTML = taxBillsState.map((d,i) => `
+            <tr class="hover:bg-slate-50 transition text-[11px]">
+                <td class="p-3 font-mono text-slate-500">${d.id}</td>
+                <td class="p-3 font-bold text-slate-700">${d.type}</td>
+                <td class="p-3 text-slate-600">${d.issuer}</td>
+                <td class="p-3 text-right font-mono font-bold text-slate-800">${d.amount} ₫</td>
+                <td class="p-3 text-center font-mono text-slate-600">${d.due}</td>
+                <td class="p-3 text-center">
+                    <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${statusCls(d.status)}">
+                        ${d.status}
+                    </span>
+                </td>
+                <td class="p-3 text-center">
+                    ${d.status !== 'Đã thanh toán'
+                        ? `<button onclick="markPaid(${i})"
+                            class="text-[9px] font-black uppercase bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-600 transition">
+                            Đã nộp
+                           </button>`
+                        : '<span class="text-[9px] text-slate-300 font-bold uppercase">—</span>'}
+                </td>
+            </tr>`).join('');
+    }
+
+    function renderSheets(data) {
+        const catColor = c => ({
+            'Thuế':      'bg-red-100 text-red-700',
+            'Lương':     'bg-blue-100 text-blue-700',
+            'Bảo hiểm':  'bg-purple-100 text-purple-700',
+            'Quyết toán':'bg-amber-100 text-amber-700',
+        }[c] || 'bg-slate-100 text-slate-600');
+
+        document.getElementById('sheets-grid').innerHTML = data.map(s => `
+            <div class="sheet-row bg-white rounded border p-4 flex flex-col gap-2 anim-in">
+                <div class="flex items-start justify-between gap-2">
+                    <p class="text-[11px] font-black text-slate-800 leading-snug">${s.title}</p>
+                    <span class="shrink-0 px-2 py-0.5 rounded text-[9px] font-black uppercase ${catColor(s.cat)}">${s.cat}</span>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-relaxed">${s.desc}</p>
+                <div class="flex items-center justify-between mt-auto pt-2 border-t">
+                    <span class="text-[9px] font-mono text-slate-400">Cập nhật: ${s.updated}</span>
+                    <button class="text-[9px] font-black text-blue-600 uppercase hover:underline">Tải xuống ↓</button>
+                </div>
+            </div>`).join('');
+    }
+
+    function renderForum(tag) {
+        const posts = forumPosts.filter(p => tag === 'all' || p.tag === tag);
+        const badgeCls = b => ({
+            'Mới':        'bg-green-100 text-green-700',
+            'Cập nhật':   'bg-blue-100 text-blue-700',
+            'Thảo luận':  'bg-purple-100 text-purple-700',
+            'Chính sách': 'bg-slate-200 text-slate-600',
+            'Hỏi đáp':    'bg-amber-100 text-amber-700',
+            'Hướng dẫn':  'bg-teal-100 text-teal-700',
+            'Tin tức':    'bg-orange-100 text-orange-700',
+            'Phân tích':  'bg-rose-100 text-rose-700',
+        }[b] || 'bg-slate-100 text-slate-600');
+
+        document.getElementById('forum-feed').innerHTML = posts.map(p => `
+            <div class="forum-card bg-white rounded border p-4 anim-in cursor-pointer">
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${badgeCls(p.badge)}">${p.badge}</span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase">${p.author}</span>
+                    <span class="text-[9px] font-mono text-slate-300 ml-auto">${p.date}</span>
+                </div>
+                <h4 class="text-[12px] font-black text-slate-800 mb-1">${p.title}</h4>
+                <p class="text-[10px] text-slate-500 leading-relaxed">${p.body}</p>
+            </div>`).join('') || '<p class="text-[11px] text-slate-400 font-bold p-4">Không có bài viết nào.</p>';
+
+        // Pinned
+        const pinned = forumPosts.filter(p => p.pinned);
+        document.getElementById('pinned-feed').innerHTML = pinned.map(p => `
+            <div class="border-b pb-2 last:border-0 cursor-pointer">
+                <p class="text-[10px] font-bold text-slate-700 hover:text-blue-600 leading-snug">${p.title}</p>
+                <p class="text-[9px] font-mono text-slate-400 mt-0.5">${p.date}</p>
+            </div>`).join('');
+    }
+
+    // ─── INTERACTIONS ─────────────────────────────────────────────────────────
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.querySelectorAll('aside nav button').forEach(b => b.classList.remove('nav-active'));
+        btn.classList.add('nav-active');
+        if (tabId === 'salary') setTimeout(initSalaryChart, 50);
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('sidebar-hidden');
+        document.getElementById('sidebar').classList.toggle('sidebar-visible');
+        document.getElementById('backdrop').classList.toggle('hidden');
+    }
+
+    function updateDateTime() {
+        const now = new Date();
+        document.getElementById('current-datetime').innerText =
+            `${now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})} - ${now.toLocaleTimeString('vi-VN',{hour12:false})}`;
+    }
+
+    function onBranchChange(v) { /* extend as needed */ }
+
+    function filterForum(tag, btn) {
+        forumFilter = tag;
+        document.querySelectorAll('.forum-chip').forEach(c => {
+            c.classList.remove('bg-slate-800','text-white');
+            c.classList.add('bg-slate-200','text-slate-600');
+        });
+        btn.classList.add('bg-slate-800','text-white');
+        btn.classList.remove('bg-slate-200','text-slate-600');
+        renderForum(tag);
+    }
+
+    function filterSheets() {
+        const q = document.getElementById('sheet-search').value.toLowerCase();
+        renderSheets(refSheets.filter(s =>
+            s.title.toLowerCase().includes(q) || s.cat.toLowerCase().includes(q)));
+    }
+
+    function openBillModal()  { document.getElementById('bill-modal').classList.remove('hidden'); }
+    function closeBillModal() { document.getElementById('bill-modal').classList.add('hidden'); }
+
+    function addBill() {
+        const type   = document.getElementById('bill-type').value;
+        const issuer = document.getElementById('bill-issuer').value || '—';
+        const amount = Number(document.getElementById('bill-amount').value).toLocaleString('vi-VN');
+        const due    = document.getElementById('bill-due').value
+                         ? new Date(document.getElementById('bill-due').value).toLocaleDateString('vi-VN') : '—';
+        if (!amount) return;
+        const newId = `INV-2026-${String(taxBillsState.length + 61).padStart(3,'0')}`;
+        taxBillsState.unshift({ id:newId, type, issuer, amount, due, status:'Chờ thanh toán' });
+        renderTaxTable();
+        closeBillModal();
+        ['bill-issuer','bill-amount','bill-due'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    function markPaid(i) {
+        taxBillsState[i].status = 'Đã thanh toán';
+        renderTaxTable();
+    }
+
+    // ─── INIT ─────────────────────────────────────────────────────────────────
+    window.onload = function () {
+        renderSalaryTable();
+        renderTaxTable();
+        renderSheets(refSheets);
+        renderForum('all');
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+        setTimeout(initSalaryChart, 100);
+    };
+    </script>
+</body>
+</html>
